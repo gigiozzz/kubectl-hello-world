@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  GO_VERSION: "1.23"
+
+jobs:
+  # Pre-build checks: format, lint, vet
+  checks:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      run: make deps
+
+    - name: Install golangci-lint
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+    - name: Check code formatting
+      run: |
+        make fmt
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "❌ Code is not properly formatted. Please run 'make fmt' and commit the changes."
+          git diff
+          exit 1
+        else
+          echo "✅ Code is properly formatted"
+        fi
+
+    - name: Run linter
+      run: make lint
+
+    - name: Run vet
+      run: make vet
+
+    - name: Run all checks
+      run: make check
+
+  # Build job using make build
+  build:
+    name: Build Binary
+    runs-on: ubuntu-latest
+    needs: checks
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      run: make deps
+
+    - name: Build binary
+      run: make build
+
+    - name: Upload binary artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: kubectl-hello-world-binary
+        path: bin/kubectl-hello-world
+        retention-days: 1
+
+  # Docker build job using make docker-build
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: checks
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: make docker-build
+
+    - name: Test Docker image
+      run: |
+        echo "Testing Docker image..."
+        docker run --rm kubectl-hello-world:latest version
+        docker run --rm kubectl-hello-world:latest --help
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: [build, docker-build]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      run: make deps
+
+    - name: Run tests
+      run: make test
