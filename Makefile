@@ -36,7 +36,7 @@ fmt: ## Format code
 	go fmt ./...
 
 .PHONY: lint
-lint: ## Run linters
+lint: deps ## Run linters
 	@echo "🔍 Running linters..."
 	@if command -v golangci-lint >/dev/null 2>&1; then \
 		golangci-lint run; \

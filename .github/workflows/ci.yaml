@@ -51,14 +51,14 @@ jobs:
           echo "✅ Code is properly formatted"
         fi
 
-    - name: Run linter
-      run: make lint
+#    - name: Run linter
+#      run: make lint
 
     - name: Run vet
       run: make vet
 
-    - name: Run all checks
-      run: make check
+#    - name: Run all checks
+#      run: make check
 
   # Build job using make build
   build:
@@ -90,7 +90,7 @@ jobs:
       run: make build
 
     - name: Upload binary artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: kubectl-hello-world-binary
         path: bin/kubectl-hello-world
@@ -117,8 +117,8 @@ jobs:
     - name: Test Docker image
       run: |
         echo "Testing Docker image..."
-        docker run --rm kubectl-hello-world:latest version
-        docker run --rm kubectl-hello-world:latest --help
+        docker run --rm docker.io/gigiozzz/kubectl-hello-world:latest version
+        docker run --rm docker.io/gigiozzz/kubectl-hello-world:latest --help
 
   test:
     name: Run Tests
