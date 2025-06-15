@@ -55,6 +55,22 @@ test-coverage: test ## Run tests with coverage report
 	@echo "📊 Generating coverage report..."
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
+	@echo "Coverage summary:"
+	@go tool cover -func=coverage.out | grep total || echo "No coverage data available"
+
+.PHONY: test-ctrf
+test-ctrf: ## Run tests with CTRF output for GitHub reporting
+	@echo "🧪 Running tests with CTRF output..."
+	@if ! command -v gotestsum >/dev/null 2>&1; then \
+		echo "📦 Installing gotestsum..."; \
+		go install gotest.tools/gotestsum@latest; \
+	fi
+	@if ! command -v go-ctrf-json-reporter >/dev/null 2>&1; then \
+		echo "📦 Installing go-ctrf-json-reporter..."; \
+		go install github.com/ctrf-io/go-ctrf-json-reporter/cmd/go-ctrf-json-reporter@latest; \
+	fi
+	@echo "🔄 Running tests with CTRF reporter..."
+	gotestsum --jsonfile gotestsum.json && go-ctrf-json-reporter < gotestsum.json
 
 .PHONY: vet
 vet: ## Run go vet
