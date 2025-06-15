@@ -34,7 +34,6 @@ deps: ## Download dependencies
 fmt: ## Format code
 	@echo "🎨 Formatting code..."
 	go fmt ./...
-	goimports -w .
 
 .PHONY: lint
 lint: ## Run linters
